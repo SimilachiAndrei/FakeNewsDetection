@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score
 # 1. Load
 train = pd.read_csv('./data/train_preprocessed.csv').dropna(subset=['processed_text'])
 test  = pd.read_csv('./data/test_preprocessed.csv').dropna(subset=['processed_text'])
+print(test['headline'])
 
 # 2. Vectorize
 vectorizer = TfidfVectorizer()
@@ -18,6 +19,5 @@ model.fit(X_train, train['label'])
 
 # 4. Evaluate on test_data
 test_preds = model.predict(X_test)
-test_acc   = accuracy_score(test['label'], test_preds)
 
-print(f"Test accuracy: {test_acc:.3f}")
+print(test_preds)

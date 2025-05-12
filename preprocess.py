@@ -5,17 +5,16 @@ from nltk.corpus import stopwords
 
 # Load your data
 train_data = pd.read_csv('data/train.csv')
-validation_data = pd.read_csv('data/validation.csv')
-test_data = pd.read_csv('data/test.csv')
+test_data = pd.read_csv('data/stiri_digi24_alegeri.csv')
 
 # Handle missing values in content column
 train_data['content'] = train_data['content'].fillna('')  # replace NaN with empty string
-test_data['content'] = test_data['content'].fillna('')  # replace NaN with empty string
+test_data['contents'] = test_data['contents'].fillna('')  # replace NaN with empty string
 
 
 # Visualize text length distribution
 train_data['text_length'] = train_data['content'].apply(len)  # create new column for length
-test_data['text_length'] = test_data['content'].apply(len)  # create new column for length
+test_data['text_length'] = test_data['contents'].apply(len)  # create new column for length
 
 
 nltk.download('stopwords')
@@ -37,7 +36,7 @@ def preprocess_text(text):
 
 # Apply preprocessing
 train_data['processed_text'] = train_data['content'].apply(preprocess_text)
-test_data['processed_text'] = test_data['content'].apply(preprocess_text)
+test_data['processed_text'] = test_data['contents'].apply(preprocess_text)
 
 
 train_data.to_csv('data/train_preprocessed.csv', index=False)

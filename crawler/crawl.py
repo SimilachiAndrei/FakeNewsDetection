@@ -82,5 +82,5 @@ for page_num in range(1, 4):  # ajustează numărul de pagini după nevoie
 # Salvare în Excel
 df = pd.DataFrame(all_articles)
 df["id"] = range(1, len(df) + 1)
-df.to_excel("stiri_digi24_alegeri.xlsx", index=False)
+df.to_csv("../data/stiri_digi24_alegeri.csv", index=False)
 print(f"\n[FINAL] Am salvat {len(df)} articole în fișierul stiri_digi24_alegeri.xlsx.")
