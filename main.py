@@ -1,23 +1,44 @@
+# main.py
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
 
-# 1. Load
-train = pd.read_csv('./data/train_preprocessed.csv').dropna(subset=['processed_text'])
-test  = pd.read_csv('./data/test_preprocessed.csv').dropna(subset=['processed_text'])
-print(test['headline'])
+def main():
+    print("Loading preprocessed data...")
+    X_train = pd.read_csv('processed/X_train.csv')
+    X_test = pd.read_csv('processed/X_test.csv')
+    y_train = pd.read_csv('processed/y_train.csv')['label']
+    headlines_test = pd.read_csv('processed/headlines_test.csv')['headline']
 
-# 2. Vectorize
-vectorizer = TfidfVectorizer()
-X_train = vectorizer.fit_transform(train['processed_text'])
-X_test  = vectorizer.transform(test['processed_text'])
+    print("Training Decision Tree...")
+    model = DecisionTreeClassifier(
+        max_depth=15,
+        min_samples_split=20,
+        min_samples_leaf=10,
+        random_state=42
+    )
+    model.fit(X_train, y_train)
 
-# 3. Train on ALL of train_data
-model = DecisionTreeClassifier(random_state=42)
-model.fit(X_train, train['label'])
+    print("Predicting...")
+    preds = model.predict(X_test)
 
-# 4. Evaluate on test_data
-test_preds = model.predict(X_test)
+    print("Saving results...")
+    results = pd.DataFrame({
+        'headline': headlines_test,
+        'prediction': preds,
+        'prediction_label': ['fake' if p == 1 else 'real' for p in preds]
+    })
+    results.to_csv('enhanced_predictions.csv', index=False)
 
-print(test_preds)
+    print("Top 10 important features:")
+    importance_df = pd.DataFrame({
+        'feature': X_train.columns,
+        'importance': model.feature_importances_
+    }).sort_values(by='importance', ascending=False).head(10)
+    print(importance_df)
+
+    print("\nTraining set performance:")
+    print(classification_report(y_train, model.predict(X_train)))
+
+if __name__ == '__main__':
+    main()
