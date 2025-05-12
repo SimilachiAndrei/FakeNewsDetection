@@ -1,4 +1,4 @@
-# preprocess.py - Enhanced version with expanded sentiment dictionaries and multiple approaches
+# preprocess.py
 import pandas as pd
 import re
 import nltk
@@ -7,17 +7,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import os
 from typing import Dict, Set
-import requests  # For accessing online sentiment resources
 
 nltk.download('stopwords', quiet=True)
-nltk.download('vader_lexicon', quiet=True)  # For sentiment intensity
+nltk.download('vader_lexicon', quiet=True)
 romanian_stopwords = set(stopwords.words('romanian'))
 
-# Massively expanded sentiment and irony keywords
 positive_words = set([
-    # Original words
     'minunat', 'perfect', 'excelent', 'bun', 'frumos', 'superb', 'fantastic', 'grozav',
-    # Additional positive adjectives
     'admirabil', 'agreabil', 'amabil', 'amuzant', 'atractiv', 'avantajos', 'binecuvântat',
     'benefic', 'brav', 'bravo', 'bucuros', 'calm', 'cald', 'celebru', 'chipeș', 'competent',
     'confortabil', 'convenabil', 'curajos', 'delicios', 'demn', 'deosebit', 'deștept', 'devotat',
@@ -34,23 +30,18 @@ positive_words = set([
     'senzațional', 'serios', 'sigur', 'simpatic', 'sincer', 'smerit', 'special', 'spectaculos',
     'splendid', 'strălucit', 'sublim', 'succes', 'superior', 'surprinzător', 'talentat', 'tânăr',
     'tandru', 'uimitor', 'util', 'valoros', 'vesel', 'victorios', 'vioi', 'viu', 'voios', 'zâmbitor',
-    # Positive nouns
     'realizare', 'avantaj', 'beneficiu', 'binecuvântare', 'bucurie', 'câștig', 'cinste', 'curaj',
     'devotament', 'dragoste', 'entuziasm', 'fericire', 'generozitate', 'glorie', 'grație',
     'iubire', 'libertate', 'liniște', 'noroc', 'onoare', 'pace', 'plăcere', 'progres', 'prosperitate',
     'respect', 'satisfacție', 'speranță', 'succes', 'triumf', 'victorie', 'virtute', 'viață',
-    # Positive verbs
     'a admira', 'a ajuta', 'a aprecia', 'a bucura', 'a câștiga', 'a crea', 'a dezvolta', 'a excela',
     'a ferici', 'a iubi', 'a îmbunătăți', 'a împlini', 'a încuraja', 'a progresa', 'a prospera',
     'a proteja', 'a realiza', 'a respecta', 'a recomanda', 'a reuși', 'a salva', 'a sprijini',
-    # Common positive expressions
     'foarte bun', 'cel mai bun', 'de top', 'de calitate', 'de încredere', 'merită', 'recomand'
 ])
 
 negative_words = set([
-    # Original words
     'rău', 'groaznic', 'prost', 'urât', 'teribil', 'jalnic', 'înfricoșător', 'dezgustător',
-    # Additional negative adjectives
     'abuziv', 'agresiv', 'amenințător', 'anacronic', 'anormal', 'antipatic', 'arogant', 'aspru',
     'atroce', 'avar', 'banal', 'barbar', 'bizar', 'blestemat', 'bolnav', 'brutal', 'catastrofal',
     'chinuit', 'cinic', 'corupt', 'crud', 'cumplit', 'dăunător', 'debil', 'decadent', 'defect',
@@ -73,7 +64,6 @@ negative_words = set([
     'scandalos', 'scelerat', 'sfidător', 'sinistru', 'slab', 'sordid', 'spăimos', 'stupid',
     'supărător', 'suspect', 'tâmp', 'tensionat', 'trist', 'tulburat', 'turbulent', 'umilit',
     'urat', 'urâcios', 'urât', 'vexant', 'vicios', 'vinovat', 'violent', 'vulgar', 'zadarnic',
-    # Negative nouns
     'abandon', 'abuz', 'accident', 'acuzație', 'agresiune', 'amenințare', 'anarhie', 'anxietate',
     'bătaie', 'beznă', 'blestem', 'boală', 'brutalitate', 'calomnie', 'catastrofă', 'chin',
     'conflict', 'corupție', 'criză', 'cruzime', 'decădere', 'defect', 'depresie', 'dezamăgire',
@@ -82,7 +72,6 @@ negative_words = set([
     'mizerie', 'moarte', 'nedreptate', 'oboseală', 'pagubă', 'panică', 'pericol', 'pierdere',
     'problemă', 'rușine', 'scandal', 'slăbiciune', 'suferință', 'teamă', 'teroare', 'tragedie',
     'tristețe', 'ură', 'urâțenie', 'vină', 'violență',
-    # Negative verbs
     'a abandona', 'a abuzá', 'a acuza', 'a amenința', 'a ataca', 'a bate', 'a chinui', 'a critica',
     'a dăuna', 'a defăima', 'a denunța', 'a deprima', 'a deranja', 'a deteriora', 'a disprețui',
     'a distruge', 'a divide', 'a durea', 'a eșua', 'a exploata', 'a frânge', 'a fura', 'a îmbolnăvi',
@@ -90,38 +79,28 @@ negative_words = set([
     'a lipsi', 'a minți', 'a murdări', 'a neglija', 'a părăsi', 'a pedepsi', 'a pierde', 'a provoca',
     'a răni', 'a respinge', 'a ruina', 'a sabota', 'a sfâșia', 'a speria', 'a suferi', 'a trăda',
     'a ucide', 'a umili', 'a urî',
-    # Common negative expressions
     'deloc', 'nu este', 'lipsă de', 'fără sens', 'prea mult', 'prea puțin', 'nu recomand'
 ])
 
 neutral_words = set([
-    # Basic verbs
     'este', 'sunt', 'avea', 'face', 'există', 'poate', 'trebuie', 'fi', 'vrea', 'putea',
     'știe', 'lua', 'da', 'vedea', 'merge', 'veni', 'spune', 'lucra', 'găsi', 'crede',
-    # Common nouns
     'om', 'femeie', 'bărbat', 'copil', 'persoană', 'zi', 'an', 'timp', 'loc', 'mână',
     'ochi', 'cap', 'parte', 'număr', 'grup', 'problemă', 'punct', 'guvern', 'companie',
-    # Pronouns
     'eu', 'tu', 'el', 'ea', 'noi', 'voi', 'ei', 'ele', 'mine', 'tine', 'lui', 'lor',
     'acesta', 'aceasta', 'acela', 'aceea', 'acestea', 'acelea', 'cine', 'ce', 'care', 'unde',
-    # Articles & prepositions
     'un', 'o', 'unei', 'unui', 'unor', 'la', 'în', 'pe', 'cu', 'de', 'din', 'pentru',
     'prin', 'peste', 'sub', 'între', 'către', 'despre', 'fără', 'până', 'după', 'înainte',
-    # Conjunctions
     'și', 'sau', 'dar', 'însă', 'ci', 'deși', 'dacă', 'când', 'unde', 'cum', 'că', 'ca',
-    # Numbers
     'unu', 'doi', 'trei', 'patru', 'cinci', 'șase', 'șapte', 'opt', 'nouă', 'zece',
     'primul', 'doilea', 'treilea', 'sută', 'mie', 'milion', 'miliard',
-    # Time expressions
     'azi', 'ieri', 'mâine', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă', 'duminică',
     'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august',
     'septembrie', 'octombrie', 'noiembrie', 'decembrie', 'oră', 'minut', 'secundă'
 ])
 
 irony_patterns = set([
-    # Original patterns
     'desigur', 'evident', 'sigur că', 'normal că', 'ce surpriză', 'la naiba', 'aproape că',
-    # Additional irony indicators
     'vai de mine', 'bravo', 'felicitări', 'minunat', 'extraordinar', 'fantastic', 'incredibil',
     'clar', 'logic', 'perfect', 'excelent', 'genial', 'superb', 'oh da', 'bineînțeles',
     'mare lucru', 'ce noroc', 'vai', 'doamne', 'dumnezeule', 'ce minune', 'ce frumos',
@@ -131,20 +110,16 @@ irony_patterns = set([
     'evident că', 'normal', 'firește', 'poate', 'probabil', 'posibil', 'eventual',
     'vai și amar', 'săracul', 'bietul', 'mă rog', 'ce să faci', 'asta e', 'așa e viața',
     'nu mă miră', 'mare mirare', 'foarte surprins', 'cine ar fi crezut', 'să vezi și să nu crezi',
-    # Sarcastic expressions
     'felicitări pentru', 'bravo ție', 'foarte deștept', 'ce inteligent', 'ce isteț',
     'foarte original', 'foarte util', 'foarte interesant', 'foarte important',
-    # Exaggeration patterns
     'cel mai', 'foarte foarte', 'super super', 'mega', 'ultra', 'extra', 'hiper',
     'absolut', 'total', 'complet', 'în întregime', 'sută la sută', '100%',
-    # Rhetorical questions and expressions
     'nu-i așa?', 'da?', 'corect?', 'bine?', 'ok?', 'serios?', 'pe bune?', 'zău?',
     'chiar așa?', 'adevărat?', 'într-adevăr?', 'cu adevărat?'
 ])
 
 
 def extract_key_features(text: str) -> Dict[str, float]:
-    """Extract comprehensive features from text"""
     features = {}
 
     # Basic text statistics
@@ -172,7 +147,7 @@ def extract_key_features(text: str) -> Dict[str, float]:
     features['title_case_words'] = sum(1 for word in words if word[0].isupper() and word[1:].islower()) / len(
         words) if words else 0
 
-    # Sentiment features (enhanced)
+    # Sentiment features
     text_lower = text.lower()
     words_lower = text_lower.split()
 
@@ -227,7 +202,6 @@ def extract_key_features(text: str) -> Dict[str, float]:
 
 
 def get_external_sentiment_score(text: str) -> float:
-    """Get sentiment score from external resources or advanced methods"""
     # Simple rule-based scoring as fallback
     words = text.lower().split()
     if not words:
@@ -265,7 +239,6 @@ def get_external_sentiment_score(text: str) -> float:
 
 
 def preprocess_for_tfidf(text: str) -> str:
-    """Enhanced text preprocessing"""
     # Preserve emoticons before cleaning
     emoticon_mapping = {
         ':)': 'emoticon_happy',
@@ -308,12 +281,8 @@ def preprocess_for_tfidf(text: str) -> str:
     return ' '.join(filtered)
 
 
-# Option 2: Using TextBlob for Romanian (requires installation)
+# TextBlob for Romanian
 def get_textblob_sentiment(text: str) -> Dict[str, float]:
-    """
-    Alternative: Use TextBlob with Romanian support
-    Run: pip install textblob textblob-ro
-    """
     try:
         from textblob import TextBlob
         from textblob_ro import TextBlobRO
@@ -358,7 +327,6 @@ def main():
     validation_data['processed_text'] = validation_data['content'].apply(preprocess_for_tfidf)
 
     print("Creating enhanced TF-IDF...")
-    # Use more features and n-grams for better coverage
     tfidf = TfidfVectorizer(
         max_features=1000,
         ngram_range=(1, 3),
